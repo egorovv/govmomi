@@ -39,9 +39,12 @@ type OutputWriter interface {
 type OutputFlag struct {
 	common
 
-	JSON bool
-	TTY  bool
-	Dump bool
+	Out io.Writer
+
+	JSON  bool
+	TTY   bool
+	Dump  bool
+	Quiet bool
 }
 
 var outputFlagKey = flagKey("output")
@@ -60,6 +63,7 @@ func (flag *OutputFlag) Register(ctx context.Context, f *flag.FlagSet) {
 	flag.RegisterOnce(func() {
 		f.BoolVar(&flag.JSON, "json", false, "Enable JSON output")
 		f.BoolVar(&flag.Dump, "dump", false, "Enable output dump")
+		f.BoolVar(&flag.Quiet, "quiet", false, "Enable quiet output")
 	})
 }
 
@@ -86,13 +90,20 @@ func (flag *OutputFlag) Log(s string) (int, error) {
 	return flag.WriteString(time.Now().Format("[02-01-06 15:04:05] ") + s)
 }
 
+func (flag *OutputFlag) Output() io.Writer {
+	if flag.Out == nil {
+		return os.Stdout
+	} else {
+		return flag.Out
+	}
+}
+
 func (flag *OutputFlag) Write(b []byte) (int, error) {
 	if !flag.TTY {
 		return 0, nil
 	}
 
-	n, err := os.Stdout.Write(b)
-	os.Stdout.Sync()
+	n, err := flag.Output().Write(b)
 	return n, err
 }
 
@@ -102,7 +113,7 @@ func (flag *OutputFlag) WriteString(s string) (int, error) {
 
 func (flag *OutputFlag) WriteResult(result OutputWriter) error {
 	var err error
-	var out = os.Stdout
+	var out = flag.Output()
 
 	if flag.JSON {
 		err = json.NewEncoder(out).Encode(result)
@@ -185,6 +196,10 @@ func (p *progressLogger) loopB(tick *time.Ticker, ch <-chan progress.Report) err
 			}
 			err = r.Error()
 		case <-tick.C:
+			if p.flag.Quiet {
+				continue
+			}
+
 			line := fmt.Sprintf("\r%s", p.prefix)
 			if r != nil {
 				line += fmt.Sprintf("(%.0f%%", r.Percentage())
