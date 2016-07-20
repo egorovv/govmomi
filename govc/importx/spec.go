@@ -42,6 +42,7 @@ type spec struct {
 	*ArchiveFlag
 
 	verbose bool
+	indent  bool
 }
 
 func init() {
@@ -53,6 +54,7 @@ func (cmd *spec) Register(ctx context.Context, f *flag.FlagSet) {
 	cmd.ArchiveFlag.Register(ctx, f)
 
 	f.BoolVar(&cmd.verbose, "verbose", false, "Verbose spec output")
+	f.BoolVar(&cmd.indent, "indent", false, "Indent output in a pretty way")
 }
 
 func (cmd *spec) Process(ctx context.Context) error {
@@ -175,7 +177,13 @@ func (cmd *spec) Spec(fpath string) error {
 		o.AllIPProtocolOptions = allIPProtocolOptions
 	}
 
-	j, err := json.Marshal(&o)
+	j := []byte{}
+	if cmd.indent {
+		j, err = json.MarshalIndent(&o, "", "\t")
+	} else {
+		j, err = json.Marshal(&o)
+	}
+
 	if err != nil {
 		return err
 	}
