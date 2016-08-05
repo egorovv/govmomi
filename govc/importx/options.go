@@ -18,8 +18,11 @@ package importx
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
+	"io"
 	"os"
+	"strings"
 
 	"golang.org/x/net/context"
 
@@ -66,6 +69,7 @@ type OptionsFlag struct {
 	Options Options
 
 	path string
+	json string
 }
 
 func newOptionsFlag(ctx context.Context) (*OptionsFlag, context.Context) {
@@ -74,20 +78,30 @@ func newOptionsFlag(ctx context.Context) (*OptionsFlag, context.Context) {
 
 func (flag *OptionsFlag) Register(ctx context.Context, f *flag.FlagSet) {
 	f.StringVar(&flag.path, "options", "", "Options spec file path for VM deployment")
+	f.StringVar(&flag.json, "options.json", "", "Options spec string for VM deployment")
 }
 
 func (flag *OptionsFlag) Process(ctx context.Context) error {
-	if len(flag.path) > 0 {
+	if len(flag.path) != 0 && len(flag.json) != 0 {
+		return errors.New("only one options spec could be specified")
+	}
+
+	var r io.Reader
+	if len(flag.path) != 0 {
 		f, err := os.Open(flag.path)
 		if err != nil {
 			return err
 		}
 		defer f.Close()
-
-		if err := json.NewDecoder(f).Decode(&flag.Options); err != nil {
-			return err
-		}
+		r = f
+	} else if len(flag.json) != 0 {
+		r = strings.NewReader(flag.json)
+	} else {
+		return nil
 	}
 
+	if err := json.NewDecoder(r).Decode(&flag.Options); err != nil {
+		return err
+	}
 	return nil
 }
