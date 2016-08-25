@@ -406,6 +406,9 @@ func (cmd *create) addStorage(devices object.VirtualDeviceList) (object.VirtualD
 func (cmd *create) addNetwork(devices object.VirtualDeviceList) (object.VirtualDeviceList, error) {
 	netdev, err := cmd.NetworkFlag.Device()
 	if err != nil {
+		if !cmd.NetworkFlag.IsSet() {
+			return devices, nil
+		}
 		return nil, err
 	}
 

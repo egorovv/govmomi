@@ -57,7 +57,9 @@ func (flag *NetworkFlag) Register(ctx context.Context, f *flag.FlagSet) {
 
 		env := "GOVC_NETWORK"
 		value := os.Getenv(env)
-		flag.name = value
+		if value != "" {
+			flag.Set(value)
+		}
 		usage := fmt.Sprintf("Network [%s]", env)
 		f.Var(flag, "net", usage)
 		f.StringVar(&flag.adapter, "net.adapter", "e1000", "Network adapter type")
