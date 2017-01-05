@@ -43,6 +43,10 @@ func init() {
 	cli.Register("datacenter.info", &info{})
 }
 
+func NewInfoCmd() cli.Command {
+	return &info{}
+}
+
 func (cmd *info) Register(ctx context.Context, f *flag.FlagSet) {
 	cmd.ClientFlag, ctx = flags.NewClientFlag(ctx)
 	cmd.ClientFlag.Register(ctx, f)

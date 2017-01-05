@@ -39,6 +39,10 @@ func init() {
 	cli.Alias("datastore.rm", "datastore.delete")
 }
 
+func NewRmCmd() cli.Command {
+	return &rm{}
+}
+
 func (cmd *rm) Register(ctx context.Context, f *flag.FlagSet) {
 	cmd.DatastoreFlag, ctx = flags.NewDatastoreFlag(ctx)
 	cmd.DatastoreFlag.Register(ctx, f)

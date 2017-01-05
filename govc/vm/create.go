@@ -49,6 +49,7 @@ type create struct {
 	on         bool
 	force      bool
 	controller string
+	nestedHV   bool
 
 	iso              string
 	isoDatastoreFlag *flags.DatastoreFlag
@@ -73,6 +74,10 @@ type create struct {
 
 func init() {
 	cli.Register("vm.create", &create{})
+}
+
+func NewCreateCmd() cli.Command {
+	return &create{}
 }
 
 func (cmd *create) Register(ctx context.Context, f *flag.FlagSet) {
@@ -115,6 +120,7 @@ func (cmd *create) Register(ctx context.Context, f *flag.FlagSet) {
 	f.StringVar(&cmd.disk, "disk", "", "Disk path (to use existing) OR size (to create new, e.g. 20GB)")
 	cmd.diskDatastoreFlag, ctx = flags.NewCustomDatastoreFlag(ctx)
 	f.StringVar(&cmd.diskDatastoreFlag.Name, "disk-datastore", "", "Datastore for disk file")
+	f.BoolVar(&cmd.nestedHV, "hv", false, "Enable nested hypervizor")
 }
 
 func (cmd *create) Process(ctx context.Context) error {
@@ -274,10 +280,11 @@ func (cmd *create) createVM(ctx context.Context) (*object.Task, error) {
 	var err error
 
 	spec := &types.VirtualMachineConfigSpec{
-		Name:     cmd.name,
-		GuestId:  cmd.guestID,
-		NumCPUs:  int32(cmd.cpus),
-		MemoryMB: int64(cmd.memory),
+		Name:            cmd.name,
+		GuestId:         cmd.guestID,
+		NumCPUs:         int32(cmd.cpus),
+		MemoryMB:        int64(cmd.memory),
+		NestedHVEnabled: &cmd.nestedHV,
 	}
 
 	devices, err = cmd.addStorage(nil)
@@ -322,7 +329,8 @@ func (cmd *create) createVM(ctx context.Context) (*object.Task, error) {
 	folder := cmd.Folder
 
 	spec.Files = &types.VirtualMachineFileInfo{
-		VmPathName: fmt.Sprintf("[%s]", datastore.Name()),
+		VmPathName: fmt.Sprintf("[%s] %s/%s.vmx", datastore.Name(),
+			cmd.name, cmd.name),
 	}
 
 	return folder.CreateVM(ctx, *spec, cmd.ResourcePool, cmd.HostSystem)

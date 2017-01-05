@@ -32,7 +32,7 @@ type HostSystemFlag struct {
 	*DatacenterFlag
 	*SearchFlag
 
-	name string
+	Name string
 	host *object.HostSystem
 	pool *object.ResourcePool
 }
@@ -61,7 +61,7 @@ func (flag *HostSystemFlag) Register(ctx context.Context, f *flag.FlagSet) {
 		env := "GOVC_HOST"
 		value := os.Getenv(env)
 		usage := fmt.Sprintf("Host system [%s]", env)
-		f.StringVar(&flag.name, "host", value, usage)
+		f.StringVar(&flag.Name, "host", value, usage)
 	})
 }
 
@@ -99,7 +99,7 @@ func (flag *HostSystemFlag) HostSystemIfSpecified() (*object.HostSystem, error) 
 	// Never look for a default host system.
 	// A host system parameter is optional for vm creation. It uses a mandatory
 	// resource pool parameter to determine where the vm should be placed.
-	if flag.name == "" {
+	if flag.Name == "" {
 		return nil, nil
 	}
 
@@ -108,7 +108,7 @@ func (flag *HostSystemFlag) HostSystemIfSpecified() (*object.HostSystem, error) 
 		return nil, err
 	}
 
-	flag.host, err = finder.HostSystem(context.TODO(), flag.name)
+	flag.host, err = finder.HostSystem(context.TODO(), flag.Name)
 	return flag.host, err
 }
 

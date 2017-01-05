@@ -34,6 +34,10 @@ func init() {
 	cli.Register("import.ova", &ova{&ovfx{}})
 }
 
+func NewOvaCmd() cli.Command {
+	return &ova{&ovfx{}}
+}
+
 func (cmd *ova) Usage() string {
 	return "PATH_TO_OVA"
 }

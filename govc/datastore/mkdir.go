@@ -40,6 +40,10 @@ func init() {
 	cli.Register("datastore.mkdir", &mkdir{})
 }
 
+func NewMkdirCmd() cli.Command {
+	return &mkdir{}
+}
+
 func (cmd *mkdir) Register(ctx context.Context, f *flag.FlagSet) {
 	cmd.DatastoreFlag, ctx = flags.NewDatastoreFlag(ctx)
 	cmd.DatastoreFlag.Register(ctx, f)

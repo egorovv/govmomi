@@ -42,7 +42,7 @@ type ovfx struct {
 
 	*ArchiveFlag
 	*OptionsFlag
-	*FolderFlag
+	*flags.FolderFlag
 
 	Name string
 
@@ -54,6 +54,10 @@ type ovfx struct {
 
 func init() {
 	cli.Register("import.ovf", &ovfx{})
+}
+
+func NewOvfCmd() cli.Command {
+	return &ovfx{}
 }
 
 func (cmd *ovfx) Register(ctx context.Context, f *flag.FlagSet) {
@@ -68,9 +72,9 @@ func (cmd *ovfx) Register(ctx context.Context, f *flag.FlagSet) {
 
 	cmd.ArchiveFlag, ctx = newArchiveFlag(ctx)
 	cmd.ArchiveFlag.Register(ctx, f)
-	cmd.OptionsFlag, ctx = newOptionsFlag(ctx)
+	cmd.OptionsFlag, ctx = NewOptionsFlag(ctx)
 	cmd.OptionsFlag.Register(ctx, f)
-	cmd.FolderFlag, ctx = newFolderFlag(ctx)
+	cmd.FolderFlag, ctx = flags.NewFolderFlag(ctx)
 	cmd.FolderFlag.Register(ctx, f)
 
 	f.StringVar(&cmd.Name, "name", "", "Name to use for new entity")
@@ -253,7 +257,10 @@ func (cmd *ovfx) Import(fpath string) (*types.ManagedObjectReference, error) {
 		return nil, err
 	}
 	if spec.Error != nil {
-		return nil, errors.New(spec.Error[0].LocalizedMessage)
+		for _, w := range spec.Error {
+			_, _ = cmd.Log(fmt.Sprintf("Error: %s\n", w.LocalizedMessage))
+		}
+		//return nil, errors.New(spec.Error[0].LocalizedMessage)
 	}
 	if spec.Warning != nil {
 		for _, w := range spec.Warning {
@@ -263,11 +270,27 @@ func (cmd *ovfx) Import(fpath string) (*types.ManagedObjectReference, error) {
 
 	if cmd.Options.Annotation != "" {
 		switch s := spec.ImportSpec.(type) {
-		case *types.VirtualMachineImportSpec:
-			s.ConfigSpec.Annotation = cmd.Options.Annotation
 		case *types.VirtualAppImportSpec:
 			s.VAppConfigSpec.Annotation = cmd.Options.Annotation
+		case *types.VirtualMachineImportSpec:
+			s.ConfigSpec.Annotation = cmd.Options.Annotation
 		}
+	}
+
+	var vmconf *types.VmConfigSpec
+
+	switch s := spec.ImportSpec.(type) {
+	case *types.VirtualAppImportSpec:
+		vmconf = &s.VAppConfigSpec.VmConfigSpec
+	case *types.VirtualMachineImportSpec:
+		vmconf = s.ConfigSpec.VAppConfig.GetVmConfigSpec()
+	}
+
+	if vmconf != nil {
+		for _, p := range vmconf.Property {
+			*p.Info.UserConfigurable = true
+		}
+		vmconf.OvfSection = []types.VAppOvfSectionSpec{}
 	}
 
 	var host *object.HostSystem

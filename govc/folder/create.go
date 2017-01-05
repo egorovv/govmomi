@@ -35,6 +35,10 @@ func init() {
 	cli.Register("folder.create", &create{})
 }
 
+func NewCreateCmd() cli.Command {
+	return &create{}
+}
+
 func (cmd *create) Register(ctx context.Context, f *flag.FlagSet) {
 	cmd.DatacenterFlag, ctx = flags.NewDatacenterFlag(ctx)
 	cmd.DatacenterFlag.Register(ctx, f)

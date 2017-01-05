@@ -17,6 +17,7 @@ limitations under the License.
 package flags
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -41,10 +42,11 @@ type OutputFlag struct {
 
 	Out io.Writer
 
-	JSON  bool
-	TTY   bool
-	Dump  bool
-	Quiet bool
+	JSON   bool
+	TTY    bool
+	Dump   bool
+	Quiet  bool
+	Indent bool
 }
 
 var outputFlagKey = flagKey("output")
@@ -62,6 +64,7 @@ func NewOutputFlag(ctx context.Context) (*OutputFlag, context.Context) {
 func (flag *OutputFlag) Register(ctx context.Context, f *flag.FlagSet) {
 	flag.RegisterOnce(func() {
 		f.BoolVar(&flag.JSON, "json", false, "Enable JSON output")
+		f.BoolVar(&flag.Indent, "indent", false, "Indent JSON output")
 		f.BoolVar(&flag.Dump, "dump", false, "Enable output dump")
 		f.BoolVar(&flag.Quiet, "quiet", false, "Enable quiet output")
 	})
@@ -82,6 +85,9 @@ func (flag *OutputFlag) Process(ctx context.Context) error {
 // A newline is not automatically added. If the specified string
 // starts with a '\r', the current line is cleared first.
 func (flag *OutputFlag) Log(s string) (int, error) {
+	if flag.Out != nil {
+		return flag.Write([]byte(s))
+	}
 	if len(s) > 0 && s[0] == '\r' {
 		flag.Write([]byte{'\r', 033, '[', 'K'})
 		s = s[1:]
@@ -114,9 +120,19 @@ func (flag *OutputFlag) WriteString(s string) (int, error) {
 func (flag *OutputFlag) WriteResult(result OutputWriter) error {
 	var err error
 	var out = flag.Output()
+	var buf bytes.Buffer
 
 	if flag.JSON {
+		//if Indent(dst *bytes.Buffer, src []byte, prefix, indent string) error {
+		if flag.Indent {
+			out = &buf
+		}
 		err = json.NewEncoder(out).Encode(result)
+		if flag.Indent {
+			var buf2 bytes.Buffer
+			json.Indent(&buf2, buf.Bytes(), "", "\t")
+			flag.Output().Write(buf2.Bytes())
+		}
 	} else if flag.Dump {
 		scs := spew.ConfigState{Indent: "    "}
 		scs.Fdump(out, result)

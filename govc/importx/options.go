@@ -18,8 +18,11 @@ package importx
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
+	"io"
 	"os"
+	"strings"
 
 	"golang.org/x/net/context"
 
@@ -66,28 +69,49 @@ type OptionsFlag struct {
 	Options Options
 
 	path string
+	json string
 }
 
-func newOptionsFlag(ctx context.Context) (*OptionsFlag, context.Context) {
-	return &OptionsFlag{}, ctx
+const optionsFlagKey = "options"
+
+func NewOptionsFlag(ctx context.Context) (*OptionsFlag, context.Context) {
+	if v := ctx.Value(optionsFlagKey); v != nil {
+		return v.(*OptionsFlag), ctx
+	}
+
+	v := &OptionsFlag{}
+	ctx = context.WithValue(ctx, optionsFlagKey, v)
+	return v, ctx
 }
 
 func (flag *OptionsFlag) Register(ctx context.Context, f *flag.FlagSet) {
 	f.StringVar(&flag.path, "options", "", "Options spec file path for VM deployment")
+	f.StringVar(&flag.path, "options.json", "", "Options spec string for VM deployment")
 }
 
 func (flag *OptionsFlag) Process(ctx context.Context) error {
-	if len(flag.path) > 0 {
+	if len(flag.path) == 0 {
+		return nil
+	}
+
+	if flag.path != "" && flag.json != "" {
+		return errors.New("only one options spec could be specified")
+	}
+
+	var r io.Reader
+	if flag.path != "" {
 		f, err := os.Open(flag.path)
 		if err != nil {
 			return err
 		}
 		defer f.Close()
-
-		if err := json.NewDecoder(f).Decode(&flag.Options); err != nil {
-			return err
-		}
+		r = f
+	} else {
+		r = strings.NewReader(flag.json)
 	}
 
+	if err := json.NewDecoder(r).Decode(&flag.Options); err != nil {
+		return err
+	}
 	return nil
 }

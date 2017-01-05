@@ -33,6 +33,10 @@ func init() {
 	cli.Register("vm.destroy", &destroy{})
 }
 
+func NewDestroyCmd() cli.Command {
+	return &destroy{}
+}
+
 func (cmd *destroy) Register(ctx context.Context, f *flag.FlagSet) {
 	cmd.ClientFlag, ctx = flags.NewClientFlag(ctx)
 	cmd.ClientFlag.Register(ctx, f)

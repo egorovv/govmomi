@@ -36,6 +36,10 @@ func init() {
 	cli.Register("datastore.upload", &upload{})
 }
 
+func NewUploadCmd() cli.Command {
+	return &upload{}
+}
+
 func (cmd *upload) Register(ctx context.Context, f *flag.FlagSet) {
 	cmd.OutputFlag, ctx = flags.NewOutputFlag(ctx)
 	cmd.OutputFlag.Register(ctx, f)
